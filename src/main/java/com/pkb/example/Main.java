@@ -7,8 +7,10 @@ import com.pkb.unit.Bus;
 import com.pkb.unit.LocalBus;
 import com.pkb.unit.tracker.Tracker;
 
+import io.reactivex.observers.TestObserver;
+
 public class Main {
-    public static void main(String[] args) {
+    public static void main(String[] args) throws InterruptedException {
         Bus bus = new LocalBus();
         MutableConfig mutableConfig = new MutableConfig(bus);
         MyHttpServer myHttpServer = new MyHttpServer(bus, mutableConfig);
@@ -16,14 +18,19 @@ public class Main {
 
         Scanner scan = new Scanner(System.in);
 
-        while (true){
+        while (true) {
             System.out.println("Enter new port number");
-            try{
+            try {
+                // Watch for restart of web server
+                TestObserver<Boolean> testObserver = Tracker.unitRestarted(bus, MyHttpServer.UNIT_ID).test();
+
+                // Change the config
                 mutableConfig.setPort(scan.nextInt());
-                Tracker.unitRestarted(bus, MyHttpServer.UNIT_ID).blockingSubscribe(restarted -> {
-                    System.out.println("MyHttpServer restarted after config change");
-                });
-            }catch(InputMismatchException e){
+
+                // Enforce that restart happened before moving on
+                testObserver.awaitCount(1);
+                testObserver.assertResult(true);
+            } catch (InputMismatchException e) {
                 System.out.println("Input has to be a number. ");
             }
         }

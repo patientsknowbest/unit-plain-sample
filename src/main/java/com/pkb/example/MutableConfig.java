@@ -31,6 +31,6 @@ public class MutableConfig extends Unit {
 
     public void setPort(int x) {
         config.put("port", x);
-        failed();
+        stop();
     }
 }
